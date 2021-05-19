@@ -1,0 +1,123 @@
+---
+title: "Table Generation"
+author: "Alex"
+date: "5/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(tidyr)
+require(reshape2)
+require(readxl)
+require(dplyr)
+require(ggplot2)
+require(data.table)
+require(dplyr)
+```
+
+Data Acquisition
+```{r echo = T, results = 'hide', error=FALSE, warning=FALSE, message=FALSE}
+inputdata <- read_excel("./inputdata.xlsx")
+
+fittedinputdata <- read_excel("inputdata.xlsx", sheet = "fitted_data")
+
+View(inputdata)
+View(fittedinputdata)
+```
+
+```{r}
+RawData <- inputdata["COSMIC_ID"]
+is.data.frame(RawData)
+
+RawData <- cbind(RawData, inputdata["CELL_LINE_NAME"], inputdata["DRUG_ID"], inputdata["CELL_ID"], inputdata["MASTER_CELL_ID"], inputdata["SEEDING_DENSITY"], inputdata["ASSAY"], inputdata["DURATION"], inputdata["POSITION"], inputdata["TAG"], inputdata["CONC"], inputdata["INTENSITY"])
+
+#Cleaning Up
+CleanData <- RawData
+
+CleanData[CleanData == "NA"] <- "0"
+#CleanData <- subset(CleanData, CleanData$TAG != "UN-USED")
+```
+Parsing and Subsetting  
+```{r}
+#Determine Length
+tp <- n_distinct(RawData["DRUG_ID"])
+tp <- tp*12
+#x <- seq(from =1, to = tp, by = 12)
+#x <- c(1,13,25)
+
+
+
+for (i in x){
+  ProcessingSubset <- c()
+  is.data.frame(ProcessingSubset)
+  
+  #Select a specified subset based off x chunks
+  tp <- i+10
+  ProcessingSubset <- rbind(ProcessingSubset, CleanData[i:tp,1:12])
+
+  #Normalization Calculations
+  Tempdata <- ProcessingSubset["CONC"]
+  Tempdata <- cbind(Tempdata, ProcessingSubset["INTENSITY"])
+  Tempdata[Tempdata == "NA"] <- "0"
+  Tempdata <- as.data.frame(Tempdata)
+  Tempvector <- as.vector(Tempdata$INTENSITY)
+  Tempterm <- as.numeric(print(paste(Tempdata[1,2])))
+  
+  ProcessingSubset["NORM-INTENSITY"] <- Tempvector / Tempterm
+
+  #Graph Plotting
+  as.data.frame(Tempdata)
+  Tempdata <- ProcessingSubset["CONC"]
+  Tempdata <- cbind(Tempdata, ProcessingSubset["NORM-INTENSITY"])
+
+  DataPlot <- plot(Tempdata$CONC, Tempdata$`NORM-INTENSITY`, xlab = "Concentration", ylab = "Viability")
+  
+  
+  
+  
+  
+  
+  #Naming and separating chunks into individual Cell/Drug data.frames
+  TempName <- paste(RawData$CELL_LINE_NAME[i], RawData$DRUG_ID[i+1], sep = "_")
+  TempName <- as.vector(TempName)
+  assign(TempName[1], ProcessingSubset)
+  assign(paste("Plot", TempName[1], sep = ","), DataPlot)
+  }
+```
+
+```{r}
+as.data.frame(Tempdata)
+Tempdata <- ProcessingSubset["CONC"]
+Tempdata <- cbind(Tempdata, ProcessingSubset["NORM-INTENSITY"])
+
+plot(Tempdata$CONC, Tempdata$`NORM-INTENSITY`, xlab = "Concentration", ylab = "Viability")
+```
+
+
+
+```{r}
+#Per Cosmic Effectiveness Calculations, Hills Equation
+
+Number_Of_Rows <- sequence(100)
+#Number_Of_Rows <- c(51536)
+Tempdata <- c()
+
+EF_Calculations <- c()
+is.data.table(EF_Calculations)
+
+for (i in Number_Of_Rows){
+  Tempvector <-c()
+  Tempdata1  <- 
+  Tempdata2  <- 
+  Tempdata3  <- 
+    
+  Tempfinalvalue <-
+    
+  Tempvector <- append(Tempvector, CondenDataTable[i,1], CondenDataTable[i,2], CondenDataTable[i,3], CondenDataTable[i,4], Tempfinalvalue)
+  EF_Calculations <- rbind(Tempvector)
+}
+
+print(Tempdata)
+```
+
