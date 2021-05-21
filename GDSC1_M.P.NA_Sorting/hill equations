@@ -1,0 +1,55 @@
+-- Biphasic Mathmatical Model Paper
+In an attempt to better understand the dose responses, the data were also fitted to a modified
+Hill equation: I = I max × D n /(IC 50 * n + D n ). In this equation, the relative inhibition (I) is expressed
+as a function of drug concentration (D) determined by three parameters: I max , IC 50 * and n. I max
+is the maximal relative inhibition a drug can achieve at saturating concentration, IC 50 * is the drug
+concentration that achieves half of maximal inhibition, and n is the Hill coefficient, or slope. We did
+not use the fourth parameter of the full Hill equation, I 0 (inhibition in the absence of an inhibitor),
+because there is no inhibition at the drug concentration of zero. Fitting the data into the above equation
+produced the graphs shown in Figure S1.
+
+-- TNBC Biphasic Paper
+At the center of targeted cancer, drug discovery is the analysis of how cancer cells respond to
+treatment by various drugs. Historically, the analysis of how cancer cells respond to treatments has
+used various versions of the Hill equation [10], which was originally developed to describe how O 2
+binds to hemoglobin [11]. When applied to cell responses to drug treatment, the full Hill equation
+(I = I max × D n /(IC 50 * n + D n )) uses three parameters to describe the response of biological 
+systemsAt the center of targeted cancer, drug discovery is the analysis of how cancer cells respond to 
+treatment by various drugs. Historically, the analysis of how cancer cells respond to treatments has
+used various versions of the Hill equation [10], which was originally developed to describe how O 2
+binds to hemoglobin [11]. When applied to cell responses to drug treatment, the full Hill equation
+(I = I max × D n /(IC 50 * n + D n )) uses three parameters to describe the response of biological systems to pharmaceutical intervention: I max (maximal inhibition at saturating drug concentration), n (Hill co-efficient), and IC 50 *, the concentration of a drug that achieves 50% of the I max [12].
+When applied to how colorectal cancer cells responded to kinase inhibitors [12], the Hill co-efficient,
+n, varied between 0.3 and 0.8 suggesting varying levels of negative cooperativity. However, there
+is no obvious mechanistic explanation for this negative cooperativity. Furthermore, in some cases,
+the dose response curves were clearly broken into two phases, suggesting that a targeted drug may
+inhibit cell viability by interacting with two distinct targets with different affinities. Based on these
+considerations, we developed a biphasic mathematical model for characterizing the cell responses to
+targeted therapy [12]. The biphasic model assumes two inhibitory effects, and breaks the inhibition of a
+cancer cell by a targeted drug into a target-specific inhibition (F 1 with K d1 ) and an off-target inhibition
+(F 2 with K d2 ). In this model, the inhibition of cell viability by a drug as a function of drug concentration
+(D) follows this equation: I = F 1 × [D]/([D] + K d1 ) + F 2 × [D]/([D] + K d2 ). We further demonstrated
+that the biphasic inhibition only applies to multi-driver cancer cells, and toward mono-driver cancer
+cells, the inhibition becomes monophasic, with F 2 inhibition becoming negligible. Thus, the biphasic
+model was able to distinguish multi-driver from mono-driver cancer cells. Furthermore, by identifying
+inhibitors for each driver, and quantifying the amplitude (F 1 ) and the potency (K d1 ) of the inhibition
+by blocking each driver, the biphasic analysis was able to suggest potent and synergistic combinations
+for blocking colorectal cancer cells [12].
+to pharmaceutical intervention: I max (maximal inhibition at saturating drug concentration), n (Hill
+co-efficient), and IC 50 *, the concentration of a drug that achieves 50% of the I max [12].
+When applied to how colorectal cancer cells responded to kinase inhibitors [12], the Hill co-efficient,
+n, varied between 0.3 and 0.8 suggesting varying levels of negative cooperativity. However, there
+is no obvious mechanistic explanation for this negative cooperativity. Furthermore, in some cases,
+the dose response curves were clearly broken into two phases, suggesting that a targeted drug may
+inhibit cell viability by interacting with two distinct targets with different affinities. Based on these
+considerations, we developed a biphasic mathematical model for characterizing the cell responses to
+targeted therapy [12]. The biphasic model assumes two inhibitory effects, and breaks the inhibition of a
+cancer cell by a targeted drug into a target-specific inhibition (F 1 with K d1 ) and an off-target inhibition
+(F 2 with K d2 ). In this model, the inhibition of cell viability by a drug as a function of drug concentration
+(D) follows this equation: I = F 1 × [D]/([D] + K d1 ) + F 2 × [D]/([D] + K d2 ). We further demonstrated
+that the biphasic inhibition only applies to multi-driver cancer cells, and toward mono-driver cancer
+cells, the inhibition becomes monophasic, with F 2 inhibition becoming negligible. Thus, the biphasic
+model was able to distinguish multi-driver from mono-driver cancer cells. Furthermore, by identifying
+inhibitors for each driver, and quantifying the amplitude (F 1 ) and the potency (K d1 ) of the inhibition
+by blocking each driver, the biphasic analysis was able to suggest potent and synergistic combinations
+for blocking colorectal cancer cells [12].

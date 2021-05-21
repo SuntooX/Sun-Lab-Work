@@ -11,6 +11,7 @@ require(tidyr)
 require(reshape2)
 require(readxl)
 require(dplyr)
+library(ggplot2)
 require(ggplot2)
 require(data.table)
 require(dplyr)
@@ -18,19 +19,19 @@ require(dplyr)
 
 Data Acquisition
 ```{r echo = T, results = 'hide', error=FALSE, warning=FALSE, message=FALSE}
-inputdata <- read_excel("./inputdata.xlsx")
+inputdata <- read_excel("./inputdata.xlsx") #, sheet = "raw_data")
 
 fittedinputdata <- read_excel("inputdata.xlsx", sheet = "fitted_data")
 
-View(inputdata)
-View(fittedinputdata)
+#View(inputdata)
+#View(fittedinputdata)
 ```
 
 ```{r}
-RawData <- inputdata["COSMIC_ID"]
+RawData <- inputdata[2]
 is.data.frame(RawData)
 
-RawData <- cbind(RawData, inputdata["CELL_LINE_NAME"], inputdata["DRUG_ID"], inputdata["CELL_ID"], inputdata["MASTER_CELL_ID"], inputdata["SEEDING_DENSITY"], inputdata["ASSAY"], inputdata["DURATION"], inputdata["POSITION"], inputdata["TAG"], inputdata["CONC"], inputdata["INTENSITY"])
+RawData <- cbind(RawData, inputdata["COSMIC_ID"], inputdata["CELL_LINE_NAME"], inputdata["DRUG_ID"], inputdata["CELL_ID"], inputdata["MASTER_CELL_ID"], inputdata["SEEDING_DENSITY"], inputdata["ASSAY"], inputdata["DURATION"], inputdata["POSITION"], inputdata["TAG"], inputdata["CONC"], inputdata["INTENSITY"])
 
 #Cleaning Up
 CleanData <- RawData
@@ -39,23 +40,16 @@ CleanData[CleanData == "NA"] <- "0"
 #CleanData <- subset(CleanData, CleanData$TAG != "UN-USED")
 ```
 Parsing and Subsetting  
-```{r}
-#Determine Length
-tp <- n_distinct(RawData["DRUG_ID"])
-tp <- tp*12
-#x <- seq(from =1, to = tp, by = 12)
-#x <- c(1,13,25)
+```{r echo = T, results = 'hide', error=FALSE, warning=FALSE, message=FALSE, results=FALSE}
+ChunkStarts <- which(grepl("B", CleanData$TAG))
+print(ChunkStarts)
 
+#ChunkStarts <- c(1, 13)
 
-
-for (i in x){
-  ProcessingSubset <- c()
-  is.data.frame(ProcessingSubset)
+for (i in ChunkStarts){
+  Tempterm <- i+10
+  ProcessingSubset <- CleanData %>% slice(i:Tempterm)
   
-  #Select a specified subset based off x chunks
-  tp <- i+10
-  ProcessingSubset <- rbind(ProcessingSubset, CleanData[i:tp,1:12])
-
   #Normalization Calculations
   Tempdata <- ProcessingSubset["CONC"]
   Tempdata <- cbind(Tempdata, ProcessingSubset["INTENSITY"])
@@ -63,61 +57,132 @@ for (i in x){
   Tempdata <- as.data.frame(Tempdata)
   Tempvector <- as.vector(Tempdata$INTENSITY)
   Tempterm <- as.numeric(print(paste(Tempdata[1,2])))
+  Tempterm2 <- as.numeric(print(paste(Tempdata[11,2])))
   
-  ProcessingSubset["NORM-INTENSITY"] <- Tempvector / Tempterm
-
-  #Graph Plotting
-  as.data.frame(Tempdata)
-  Tempdata <- ProcessingSubset["CONC"]
-  Tempdata <- cbind(Tempdata, ProcessingSubset["NORM-INTENSITY"])
-
-  DataPlot <- plot(Tempdata$CONC, Tempdata$`NORM-INTENSITY`, xlab = "Concentration", ylab = "Viability")
-  
-  
-  
-  
-  
-  
+  ProcessingSubset$CONC <- as.numeric(ProcessingSubset$CONC)
+  ProcessingSubset["lnCONC"] <- log(ProcessingSubset["CONC"])
+  ProcessingSubset["RELATIVE_VIABILITY"] <- (Tempvector - Tempterm)/(Tempterm2 - Tempterm)
+ 
+#  ProcessingSubset$CONC <- as.vector(ProcessingSubset$CONC)
+#  ProcessingSubset[ProcessingSubset$lnCONC == "-Inf"] <- "0"
   #Naming and separating chunks into individual Cell/Drug data.frames
-  TempName <- paste(RawData$CELL_LINE_NAME[i], RawData$DRUG_ID[i+1], sep = "_")
+  TempName <- paste(ProcessingSubset$CELL_LINE_NAME[1], ProcessingSubset$DRUG_ID[2], sep = "_")
   TempName <- as.vector(TempName)
   assign(TempName[1], ProcessingSubset)
-  assign(paste("Plot", TempName[1], sep = ","), DataPlot)
-  }
+}
 ```
 
 ```{r}
-as.data.frame(Tempdata)
-Tempdata <- ProcessingSubset["CONC"]
-Tempdata <- cbind(Tempdata, ProcessingSubset["NORM-INTENSITY"])
+library(deSolve)
+library(glue)
+library(CARRoT)
+library(caret)
+library(nlme)
 
-plot(Tempdata$CONC, Tempdata$`NORM-INTENSITY`, xlab = "Concentration", ylab = "Viability")
+#Simple equation: I = [D]/([D] + IC 50 )  --> (IC50 = [D]-[D]I)/I)
+#equation.test.data <- slice(`MC-CAR_104`[2:11,])
+#equation.test.data <- chop(equation.test.data[,11:15])
+
+D <- as.vector(`MC-CAR_104`$CONC[2:11])
+I <- as.vector(`MC-CAR_104`$RELATIVE_VIABILITY[2:11])
+Tempdata <- as.data.frame(D)
+Tempdata <- cbind(Tempdata, I)
+
+Tempvector <- D/I-D
+#equation.test.data$TempLC50 <- Tempvector
+Tempvector <- as.vector(Tempvector)
+# Build the model
+model <- gnls(I ~ D/(D+Tempvector), start=c(D=D, Tempvector=Tempvector))
+# Make predictions
+predictions.gnls <- model %>% prediction.gnls(equation.test.data)
+# Model performance
+#data.frame(
+  #RMSE = RMSE(predictions, Tempdata$I),
+  #R2 = R2(predictions, Tempdata$I))
+
+
+
 ```
 
+# medv = y, lstat = x
+data("Boston", package = "MASS")
+# Split the data into training and test set
+set.seed(123)
+training.samples <- Boston$medv %/% createDataPartition(Boston$medv, p = 1, list = FALSE)
+train.data  <- Boston[training.samples, ]
+test.data <- Boston[-training.samples, ]
+
+nls(medv ~ lstat, data = test.data, start=list(lstat=0))
+
+# Build the model
+model <- nls(medv ~ lstat^2, data = test.data, start=list(lstat=0))
+# Make predictions
+predictions <- model %>% predict(test.data)
+# Model performance
+data.frame(
+  RMSE = RMSE(predictions, test.data$medv),
+  R2 = R2(predictions, test.data$medv))
+
+ggplot(test.data, aes(lstat, medv) ) +
+  geom_point() +
+  stat_smooth(method = nls, formula = y ~ x^2)
+
+```
+Poly Modeling:
+#ggplot(train.data, aes(lstat, medv) ) +
+#  geom_point() +
+#  stat_smooth()
 
 
-```{r}
-#Per Cosmic Effectiveness Calculations, Hills Equation
 
-Number_Of_Rows <- sequence(100)
-#Number_Of_Rows <- c(51536)
-Tempdata <- c()
+ggplot(test.data, aes(lstat, medv) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ poly(x, 5, raw = TRUE))
 
-EF_Calculations <- c()
-is.data.table(EF_Calculations)
 
-for (i in Number_Of_Rows){
-  Tempvector <-c()
-  Tempdata1  <- 
-  Tempdata2  <- 
-  Tempdata3  <- 
-    
-  Tempfinalvalue <-
-    
-  Tempvector <- append(Tempvector, CondenDataTable[i,1], CondenDataTable[i,2], CondenDataTable[i,3], CondenDataTable[i,4], Tempfinalvalue)
-  EF_Calculations <- rbind(Tempvector)
+Linear Modeling:
+# Build the model
+model <- lm(medv ~ lstat, data = train.data)
+# Make predictions
+predictions <- model %>% predict(test.data)
+# Model performance
+data.frame(
+  RMSE = RMSE(predictions, test.data$medv),
+  R2 = R2(predictions, test.data$medv))
+
+ggplot(train.data, aes(lstat, medv) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ x)
+
+```  
+# R Documentation Example
+initLogis <- function(mCall, data, LHS) {
+    xy <- data.frame(sortedXyData(mCall[["input"]], LHS, data))
+    if(nrow(xy) < 4)
+        stop("too few distinct input values to fit a logistic model")
+    z <- xy[["y"]]
+    ## transform to proportion, i.e. in (0,1) :
+    rng <- range(z); dz <- diff(rng)
+    z <- (z - rng[1L] + 0.05 * dz)/(1.1 * dz)
+    xy[["z"]] <- log(z/(1 - z))		# logit transformation
+    aux <- coef(lm(x ~ z, xy))
+    pars <- coef(nls(y ~ 1/(1 + exp((xmid - x)/scal)),
+                     data = xy,
+                     start = list(xmid = aux[[1L]], scal = aux[[2L]]),
+                     algorithm = "plinear"))
+    setNames(pars[c(".lin", "xmid", "scal")], nm = mCall[c("Asym", "xmid", "scal")])
 }
 
-print(Tempdata)
+SSlogis <- selfStart(~ Asym/(1 + exp((xmid - x)/scal)),
+                     initial = initLogis,
+                     parameters = c("Asym", "xmid", "scal"))
+
+
+
+
+summary(SSlogis(D, xmid, scal = 0))
+
+
 ```
+
 
