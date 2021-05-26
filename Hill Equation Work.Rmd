@@ -1,0 +1,265 @@
+---
+title: "Hill Equation Work"
+author: "Alex"
+date: "5/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyr)
+library(reshape2)
+library(readxl)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(deSolve)
+library(glue)
+library(CARRoT)
+library(caret)
+library(nlme)
+library(ggplot2)
+library(broom)
+#Repeat Libraries to reduce error
+library(reshape2)
+library(readxl)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(deSolve)
+library(glue)
+library(CARRoT)
+library(caret)
+library(nlme)
+library(ggplot2)
+library(broom)
+```
+
+
+
+```{r}
+library(readr)
+equation_test_data <- read_csv("equation.test.data.csv")
+View(equation_test_data)
+
+#equation.test.data <- slice(`MC-CAR_104`[2:11,])
+#equation.test.data <- chop(equation.test.data[,11:15])
+
+#write.csv(equation.test.data, "equation.test.data.csv")
+```
+
+```{r}
+# Importing New Data from Table_Generation
+equation_test_data <- `MC-CAR_106`[2:11,3:4]
+equation_test_data <- cbind(equation_test_data, `MC-CAR_106`[2:11,12:15])
+equation_test_data[equation_test_data == "Inf"] <- 10
+equation_test_data[equation_test_data == "-Inf"] <- -10
+
+# Check Plot for Errors
+plot(equation_test_data$lnCONC, equation_test_data$RELATIVE_VIABILITY)
+plot(equation_test_data$CONC, equation_test_data$RELATIVE_VIABILITY)
+
+# Data Prep
+x <- -1*equation_test_data$lnCONC
+y <- equation_test_data$RELATIVE_VIABILITY
+
+#Zeroing by min-addition
+ tempterm <- min(x)
+ x <- x-tempterm
+
+testdata <- as.data.frame(x)
+testdata <- cbind(testdata, y)
+testdata[] <- round(testdata[], digits = 3)
+testdata[testdata == "Inf"] <- 10
+testdata[testdata == "-Inf"] <- -10
+testdata <- as.data.frame(testdata)
+
+#Set Weighting
+weighting <- .3 + (1-.3)*exp(-10*(testdata$y-.5)^2)
+#weighting[1] <- 1
+#weighting[10] <- 1
+paste (weighting) 
+weighting <- as.data.frame(weighting)
+testdata <- cbind(testdata, weighting)
+
+```
+
+
+```{r}
+# Using a Linear Regression #x
+lm(formula = y ~ x , data = testdata, weights = testdata$weighting)
+
+summary <- lm(formula = y ~ x , data = testdata, weights = testdata$weighting)
+summary$coefficients
+a <- as.numeric(paste(summary$coefficients[1]))
+b <- as.numeric(paste(summary$coefficients[2]))
+#I = D/(D + IC50) >> I = a + b * D)
+GeneratedEquation <- paste("I =", a, "+", b, "D)", sep = "")
+
+# IC50 = `D/.5 - D >> (.5 - a) / b
+CalculatedIC50 <- (-summary$coefficients[1]+.5)/(summary$coefficients[2])
+
+ConcentrationNearestRV50 <- testdata %>% slice(which.min(.4), which.max(.6))
+ConcentrationNearestRV50 <- ConcentrationNearestRV50[1,]
+ConcentrationNearestRV50 <- as.vector(ConcentrationNearestRV50)
+CNRV50DifferenceTo.50 <- abs(ConcentrationNearestRV50[2] - 0.5)
+
+#RMSE Calculations
+PredictedData <- a + b * x
+PredictedData[PredictedData == "Inf"] <- 1
+
+LinearRMSE <- RMSE(PredictedData, testdata$y)
+
+#Graph Function
+temptext <- paste(ActiveName, "Linear Regression", sep = " ")
+temptext2 <- paste("a = ", a, ", b = ", b, sep = "")
+
+ggplot(data = testdata, aes(x = x, y = y)) +
+    geom_point()+
+    geom_function(fun = function(x) summary$coefficients[1] + summary$coefficients[2]*x) +
+    labs(title = temptext, subtitle = temptext2, x = "LnCONC", y = "Relative Viability") +
+    ylim(0, 1.5)+
+    ggsave(plot = last_plot(), filename = "LinearEquationReportPlot.png", width = 4, height = 4, device = NULL)
+
+#Write Report Data 
+LinearEquationReport <- c(paste(GeneratedEquation), CalculatedIC50, LinearRMSE, as.vector(ConcentrationNearestRV50[1]), as.vector(ConcentrationNearestRV50[2]),CNRV50DifferenceTo.50)
+
+LinearEquationReport <- as.data.frame(LinearEquationReport)
+LinearEquationReport <- transpose(LinearEquationReport)
+
+tempvector <- c("LN Equation", "CalculatedIC50", "LinearRMSE", "Concentration Nearest to RV50","RV Nearest to RV50","Difference between Nearest Value and .5")
+as.data.frame(tempvector)
+LinearEquationReport <- cbind(LinearEquationReport, tempvector)
+
+LinearEquationReport
+
+```
+
+
+```{r}
+library(ModelMetrics)
+library(aomisc)
+library(drmdel)
+library(drc)
+library(nlme)
+# Using a Simple Regression 
+#drm(y ~ x, fct = MM.2())2
+
+x <- testdata$x
+y <- testdata$y
+Simplemodel <- drm(y ~ x, fct = MM.2(fixed = c(1, NA)), weights = testdata$weighting)
+
+#summary <- lm(formula = y ~ x , data = testdata)
+Simplemodel$coefficients
+a <- 1 #as.numeric(paste(Simplemodel$coefficients[1]))
+b <- as.numeric(paste(Simplemodel$coefficients[1]))
+#I = D/(D + IC50) >> I = ***)
+GeneratedEquation <- paste("I =", a, "D/(", b, "+ D)", sep = "")
+# IC50 = D/.5 - D >> ***
+
+CalculatedIC50 <- (.5*b/a)/(1-.5/a)
+
+ConcentrationNearestRV50 <- testdata %>% slice(which.min(.4), which.max(.6))
+ConcentrationNearestRV50 <- ConcentrationNearestRV50[1,]
+ConcentrationNearestRV50 <- as.vector(ConcentrationNearestRV50)
+CNRV50DifferenceTo.50 <- abs(ConcentrationNearestRV50[2] - 0.5)
+
+#RMSE Calculations
+tempvector <- b + x
+PredictedData <- a * x / tempvector
+PredictedData[PredictedData == "Inf"] <- 1
+
+SimpleRMSE <- RMSE(PredictedData, testdata$y)
+
+#Graph Function
+temptext <- paste(ActiveName, "Simple Hills Regression", sep = " ")
+temptext2 <- paste("a = ", a, ", b = ", b, sep = "")
+ggplot(data = testdata, aes(x = x, y = y)) +
+    geom_point()+
+    geom_function(fun = function(x) summary$coefficients[1] + summary$coefficients[2]*x) +
+    labs(title = temptext, subtitle = temptext2, x = "LnCONC", y = "Relative Viability") +
+    ylim(0, 1.5)+
+    ggsave(plot = last_plot(), filename = "SimpleEquationReportPlot.png", width = 4, height = 4, device = NULL)
+
+#Write Report Data
+SimpleEquationReport <- c(paste(GeneratedEquation), CalculatedIC50, SimpleRMSE, as.vector(ConcentrationNearestRV50[1]), as.vector(ConcentrationNearestRV50[2]),CNRV50DifferenceTo.50)
+
+SimpleEquationReport <- as.data.frame(SimpleEquationReport)
+SimpleEquationReport <- transpose(SimpleEquationReport)
+
+tempvector <- c("Simple Equation", "CalculatedIC50", "SimpleRMSE", "Concentration Nearest to RV50","RV Nearest to RV50","Difference between Nearest Value and .5")
+as.data.frame(tempvector)
+SimpleEquationReport <- cbind(SimpleEquationReport, tempvector)
+
+SimpleEquationReport
+```
+
+
+#```{r}
+library(ModelMetrics)
+library(aomisc)
+library(drmdel)
+library(drc)
+library(nlme)
+# Using a Poly Hills Regression 
+#nls(formula = y ~ x , data = testdata)
+
+#drm(y ~ x, fct = MM.2())
+
+x <- testdata$x
+y  <- testdata$y
+Polymodel <- drm(y ~ x, fct = MM.2())
+plot(Polymodel, log = "", main = "Michaelis-Menten function", ylim = c(0, 1))
+dev.copy(png, filename = "MMPolyEquationReportPlot.png")
+dev.off()
+
+#summary <- lm(formula = y ~ x , data = testdata)
+Polymodel$coefficients
+a <- as.numeric(paste(Polymodel$coefficients[1]))
+b <- as.numeric(paste(Polymodel$coefficients[2]))
+#I = D/(D + IC50) >> I = ***)
+GeneratedEquation <- paste("I =", a, "D/(", b, "+ D)", sep = "")
+# IC50 = D/.5 - D >> ***
+#CalculatedIC50 <- 
+
+ConcentrationNearestRV50 <- testdata %>% slice(which.min(.4), which.max(.6))
+ConcentrationNearestRV50 <- ConcentrationNearestRV50[1,]
+ConcentrationNearestRV50 <- as.vector(ConcentrationNearestRV50)
+CNRV50DifferenceTo.50 <- abs(ConcentrationNearestRV50[2] - 0.5)
+
+#RMSE Calculations
+tempvector <- b + x
+PredictedData <- a * x / tempvector
+PredictedData[PredictedData == "Inf"] <- 1
+
+PolyRMSE <- RMSE(PredictedData, testdata$y)
+
+#Graph Function
+ggplot(data = testdata, aes(x = x, y = y)) +
+  geom_point()+
+  geom_function(fun = function(x) a*x/(b+x))
+ggsave(plot = last_plot(), filename = "PolyEquationReportPlot.png", width = 4, height = 4, device = NULL)
+
+#Write Report Data
+PolyEquationReport <- c(paste(GeneratedEquation), CalculatedIC50, PolyRMSE, as.vector(ConcentrationNearestRV50[1]), as.vector(ConcentrationNearestRV50[2]),CNRV50DifferenceTo.50)
+
+PolyEquationReport <- as.data.frame(PolyEquationReport)
+PolyEquationReport <- transpose(PolyEquationReport)
+
+tempvector <- c("LN Equation", "CalculatedIC50", "PolyRMSE", "Concentration Nearest to RV50","RV Nearest to RV50","Difference between Nearest Value and .5")
+as.data.frame(tempvector)
+PolyEquationReport <- cbind(PolyEquationReport, tempvector)
+
+PolyEquationReport
+
+
+
+
+
+
+```
+
