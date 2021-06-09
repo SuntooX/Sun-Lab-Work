@@ -20,12 +20,12 @@ for ( u in z) {
     source(file = "range.randomizer.R", local = TRUE)
   #b can not equal 0
   b_list <- range[range > 0]
-  b_list <- b_list[!b_list == 1]
+  b_list <- b_list[!b_list > 1]
   
   tempvector <- c
     source(file = "range.randomizer.R", local = TRUE)
   c_list <- range
-  
+  c_list[c_list < 0] <- c_list[c_list < 0]*-1 
 #  tempvector <- d 
 #    source(file = "range.randomizer.R", local = TRUE)
 #  d <- sample(range, 12, replace = TRUE)

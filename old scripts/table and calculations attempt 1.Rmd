@@ -1,0 +1,207 @@
+---
+title: "Table and Calculation AtTempt"
+author: "Alex"
+date: "5/25/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(tidyr)
+require(reshape2)
+require(readxl)
+require(dplyr)
+library(ggplot2)
+require(ggplot2)
+require(data.table)
+require(dplyr)
+library(tidyr)
+library(reshape2)
+library(readxl)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(deSolve)
+library(glue)
+library(CARRoT)
+library(caret)
+library(nlme)
+library(ggplot2)
+library(broom)
+#Repeat Libraries to reduce error
+library(reshape2)
+library(readxl)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(deSolve)
+library(glue)
+library(CARRoT)
+library(caret)
+library(nlme)
+library(ggplot2)
+require(tidyr)
+require(reshape2)
+require(readxl)
+require(dplyr)
+library(ggplot2)
+require(ggplot2)
+require(data.table)
+require(dplyr)
+library(broom)
+library(ModelMetrics)
+library(aomisc)
+library(drmdel)
+library(drc)
+library(nlme)
+require(tidyr)
+require(reshape2)
+require(readxl)
+require(dplyr)
+library(ggplot2)
+require(ggplot2)
+require(data.table)
+require(dplyr)
+library(ModelMetrics)
+library(aomisc)
+library(drmdel)
+library(drc)
+library(nlme)
+```
+
+
+```{r echo = T, results = 'hide', error=FALSE, warning=FALSE, message=FALSE}
+#Data Acquisition
+inputdata <- read_excel("./inputdata.xlsx") #, sheet = "raw_data")
+
+fittedinputdata <- read_excel("inputdata.xlsx", sheet = "fitted_data")
+
+RawData <- inputdata[2]
+is.data.frame(RawData)
+
+RawData <- cbind(RawData, inputdata["COSMIC_ID"], inputdata["CELL_LINE_NAME"], inputdata["DRUG_ID"], inputdata["CELL_ID"], inputdata["MASTER_CELL_ID"], inputdata["SEEDING_DENSITY"], inputdata["ASSAY"], inputdata["DURATION"], inputdata["POSITION"], inputdata["TAG"], inputdata["CONC"], inputdata["INTENSITY"])
+
+#Cleaning Up
+CleanData <- RawData
+CleanData[CleanData == "NA"] <- "0"
+
+#Parsing Grouping Chunks 
+ChunkStarts <- which(grepl("D1", CleanData$TAG))
+print(ChunkStarts)]
+```
+
+```{r}
+#Data Processing
+for (i in ChunkStarts){
+Tempterm <- i+8
+ProcessingSubset <- CleanData %>% slice(i:Tempterm)
+
+
+#Find Negative Controlls
+Tempterm <- ProcessingSubset$CELL_LINE_NAME[2]
+Tempvector <- which(grepl(Tempterm, CleanData$CELL_LINE_NAME))
+Tempdata <- CleanData %>% slice(min(Tempvector):max(Tempvector))
+Tempdata <- cbind(Tempdata, Tempvector)
+Tempdata <- Tempdata %>% filter(Tempdata$TAG == "NC-0")
+
+NC0 <- mean(Tempdata$INTENSITY)
+  
+#Normalization Calculations
+Tempdata <- ProcessingSubset["CONC"]
+Tempdata <- cbind(Tempdata, ProcessingSubset["INTENSITY"])
+Tempdata[Tempdata == "NA"] <- "0"
+Tempdata <- as.data.frame(Tempdata)
+Tempvector <- as.vector(Tempdata$INTENSITY)
+#Tempterm <- 40000 #General Blank
+#Tempterm2 <- NC-0
+ProcessingSubset$CONC <- as.numeric(ProcessingSubset$CONC)
+ProcessingSubset["lnCONC"] <- log(ProcessingSubset["CONC"])
+ProcessingSubset["RELATIVE_VIABILITY"] <- (Tempvector - 40000)/(NC0 - 40000)
+
+#Import Data - Change Name for different tables of Cell/Drug Combos 
+equation_test_data <- ProcessingSubset[1:8,3:4]
+equation_test_data <- cbind(equation_test_data, ProcessingSubset[1:8,12:15])
+equation_test_data[equation_test_data == "Inf"] <- 10
+equation_test_data[equation_test_data == "-Inf"] <- -10
+
+ActiveName <- paste(equation_test_data$CELL_LINE_NAME[1],equation_test_data$DRUG_ID[2], sep="_")
+
+# Check Plot for Errors 
+plot(-1*equation_test_data$lnCONC, equation_test_data$RELATIVE_VIABILITY, xlab = "LnCONC", ylab = "Relative Viability", main = paste(ActiveName, "BasePlot 1", sep = ""))
+plot(-1*equation_test_data$CONC, equation_test_data$RELATIVE_VIABILITY, xlab = "CONC", ylab = "Relative Viability", main = paste(ActiveName, "BasePlot 2", sep = ""))
+
+# Data Prep
+x <- -1*equation_test_data$lnCONC
+y <- equation_test_data$RELATIVE_VIABILITY
+
+#Zeroing & Normalizing by subtraction of smallest term
+Tempterm <- min(x)
+x <- x-Tempterm
+
+if (mean(x) == 0) next
+Tempdata <- round(mean(y), digits = 1)
+if (Tempdata == 1) next
+
+testdata <- as.data.frame(x)
+testdata <- cbind(testdata, y)
+testdata[] <- round(testdata[], digits = 3)
+testdata[testdata == "Inf"] <- 10
+testdata[testdata == "-Inf"] <- -10
+testdata <- as.data.frame(testdata)
+
+#Set Weighting
+weighting <- .3 + (1-.3)*exp(-10* (testdata$y-.5)^2)
+weighting <- as.data.frame(weighting)
+testdata <- cbind(testdata, weighting)
+
+### Start of Simple Hills Regression Modeling ###
+# Using a Simple Regression based off the MM-2 Variable model
+
+errorterms <- c("NaNs produced", "NaNs", "producedNaNs")
+tryCatch({Simplemodel <- drm(y ~ x, fct = MM.2(fixed = c(1, NA)), weights = testdata$weighting)}, error = function(e){cat(errorterms, conditionMessage(e), "\n")})
+
+Simplemodel$coefficients
+a <- 1 #Change to >> "as.numeric(paste(Simplemodel$coefficients[1]))" and update "b" if not slope of 1
+b <- as.numeric(paste(Simplemodel$coefficients[1]))
+
+# Produce Equation, Calculate IC50, and Observe Most Likely IC50
+GeneratedEquation <- paste("I =", a, " * D/(", b, "+ D)", sep = "")
+CalculatedIC50 <- (.5*b/a)/(1-.5/a)
+ConcentrationNearestRV50 <- testdata %>% slice(which.min(.4), which.max(.6))
+ConcentrationNearestRV50 <- ConcentrationNearestRV50[1,]
+ConcentrationNearestRV50 <- as.vector(ConcentrationNearestRV50)
+CNRV50DifferenceTo.50 <- abs(ConcentrationNearestRV50[2] - 0.5)
+
+#RMSE Calculations
+Tempvector <- b + x
+PredictedData <- a * x / Tempvector
+PredictedData[PredictedData == "Inf"] <- 1
+SimpleRMSE <- RMSE(PredictedData, testdata$y)
+
+#Graph Function and labeling 
+Temptext <- paste(ActiveName, "Simple Hills Regression", sep = " ")
+Temptext2 <- paste("a =", a, ", b =", b, "RMSE =", SimpleRMSE, sep = " ")
+Temptext3 <- paste(ActiveName, "_SimpleEquationReportPlot.png", sep="")
+
+ggplot(data = testdata, aes(x = x, y = y)) +
+  geom_point()+
+  geom_function(fun = function(x) x/(b+x)) +
+  labs(title = Temptext, subtitle = Temptext2, x = "LnCONC", y = "Relative Viability") +
+  ylim(0, 1.5)+
+  ggsave(plot = last_plot(), filename = Temptext3, width = 4, height = 4, device = NULL)
+
+#Write Report Data
+SimpleEquationReport <- c("Simple Equation", "CalculatedIC50", "SimpleRMSE", "Concentration Nearest to RV50","RV Nearest to RV50","Difference between Nearest Value and .5", "NA","NA","NA")
+SimpleEquationReport <- cbind(SimpleEquationReport, c(GeneratedEquation, CalculatedIC50, SimpleRMSE, as.vector(ConcentrationNearestRV50[1]),  as.vector(ConcentrationNearestRV50[2]), CNRV50DifferenceTo.50,"NA","NA","NA"))
+
+ProcessingSubset <]- cbind(ProcessingSubset, SimpleEquationReport)
+
+#Temptext4 <- paste(ActiveName, "SimpleEqReport", sep = "_")
+#  assign(Temptext4, SimpleEquationReport)
+
+TempName <- paste(ProcessingSubset$CELL_LINE_NAME[1], ProcessingSubset$DRUG_ID[2], sep = "_")
+  TempName <- as.vector(TempName)
+  assign(TempName[1], ProcessingSubset)
+
+}
+```
