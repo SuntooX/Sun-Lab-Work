@@ -1,0 +1,197 @@
+---
+title: "Untitled"
+author: "Alex"
+date: "5/30/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Setup:
+library(tidyr)
+library(lattice)
+library(reshape2)
+library(readxl)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(deSolve)
+library(glue)
+library(CARRoT)
+library(caret)
+library(nlme)
+library(ggplot2)
+library(broom) 
+library(reshape2)
+library(readxl)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(deSolve)
+library(glue)
+library(CARRoT)
+library(caret)
+library(nlme)
+library(ggplot2)
+library(broom)
+library(ModelMetrics)
+#library(aomisc)
+library(drmdel)
+library(drc)
+library(stringr) 
+library(nlme)
+library(openxlsx)
+library(scales)
+```
+
+```{r echo = T, results = 'hide',  error=FALSE, warning=FALSE, message=FALSE}
+#Data Acquisition
+#inputdata <-  read_excel("./inputdata.xlsx")
+inputdata <- read.csv(file = "./GDSC1_public_raw_data_25Feb20.csv", nrows = 80)
+"range.randomizer.R"
+output_results <- read.csv(file = "./all_results.csv")
+output_results <-output_results[,2:9]
+RawData <- inputdata[2]
+is.data.frame(RawData) 
+RawData <- cbind(RawData, inputdata["COSMIC_ID"], inputdata["CELL_LINE_NAME"], inputdata["DRUG_ID"], inputdata["CELL_ID"], inputdata["MASTER_CELL_ID"], inputdata["SEEDING_DENSITY"], inputdata["ASSAY"], inputdata["DURATION"], inputdata["POSITION"], inputdata["TAG"], inputdata["CONC"], inputdata["INTENSITY"])
+
+#Cleaning Up
+CleanData <- subset(RawData, RawData$TAG != "UN-USED")
+CleanData[CleanData == "NA"] <- "0"
+```
+
+```{r}
+#table processing  
+dirtyregressionresults <- as.data.frame(c())
+
+#Parsing Grouping Chunks 
+ChunkStarts <- which(grepl("D1", CleanData$TAG))
+print(ChunkStarts)
+
+randomizer = "range.randomizer_2.R"
+
+for (w in ChunkStarts){
+  w <- as.numeric(w)
+tempterm <- w+9
+ProcessingSubset <- CleanData %>% slice(w:tempterm)
+
+{
+#Find Negative Controls
+#tempterm <- ProcessingSubset$CELL_LINE_NAME[2]
+#tempdata <- subset(CleanData, CleanData$CELL_LINE_NAME == tempterm)
+#tempdata <- tempdata %>% filter(tempdata$TAG == "NC-0")
+#NC0 <- mean(tempdata$INTENSITY)
+
+#Inter-Data Preparation
+tempdata <- ProcessingSubset["CONC"]
+tempdata <- cbind(tempdata, ProcessingSubset["INTENSITY"])
+tempdata[tempdata == "NA"] <- "0"
+tempdata <- as.data.frame(tempdata)
+tempvector <- as.vector(tempdata$INTENSITY)
+ProcessingSubset$CONC <- as.numeric(ProcessingSubset$CONC)
+ProcessingSubset["lnCONC"] <- log(ProcessingSubset["CONC"])
+tempterm <- filter(ProcessingSubset, ProcessingSubset$TAG == "NC-0")
+ProcessingSubset["RELATIVE_VIABILITY"] <- (tempvector - 30000)/(as.numeric(tempterm$INTENSITY) - 30000)
+
+#Import Data - C hange Name for different tables of Cell/Drug Combos 
+equation_test_data <- ProcessingSubset[1:10,3:4]
+equation_test_data <- cbind(equation_test_data, ProcessingSubset[1:10,12:15])
+equation_test_data[equation_test_data == "Inf"] <- 10
+equation_test_data[equation_test_data == "-Inf"] <- -10
+equation_test_data[is.na(equation_test_data)] <- 0
+ActiveName <- paste(equation_test_data$CELL_LINE_NAME[1],equation_test_data$DRUG_ID[2], sep="_")
+print(paste(ActiveName))
+# Data Prep
+x <- equation_test_data$CONC
+y <- equation_test_data$RELATIVE_VIABILITY 
+
+
+} #general processing and data collection
+if (sd(x) <= 0){
+  tempvector <- c(ActiveName, "No Drug", 0, 0, 0, 0, NA, NA)
+  dirtyregressionresults <- rbind(dirtyregressionresults, tempvector)
+  next
+  } 
+if (sd(y) <= .03){
+  tempvector <- c(ActiveName, "Not Effective", 0, 0, 0, 
+                  0, NA, Inf)
+  dirtyregressionresults <- rbind(dirtyregressionresults, tempvector)
+  next 
+  } 
+{
+testdata <- as.data.frame(x)
+testdata <- cbind(testdata, y)
+testdata[testdata == "Inf"] <- 10
+testdata[testdata == "-Inf"] <- -10
+testdata <- as.data.frame(testdata)
+}
+{#Biphasic Model Regression Calculations ------------------------
+  #inputs
+  activefunction <- function(x) {1-a*x/(b+x)-(1-a)*x/(c+x)}
+  biphasic.function <- activefunction
+  z <- c(0:10)  #iterations
+  s <- 5       #Number of subdivisions to do during regression
+  a <- c(0,1)  #F1 term
+  b <- c(0,10) #Kd1
+  c <- c(0,10) #Kd2
+  d <- NA #currently the offset for when Imax is reached
+}
+source(file = "dirtyregression.R", local = TRUE)
+
+{#outputs
+  biphasic.results <- results[order(results$RMSEscore), ] [1,]
+  a <- as.numeric(biphasic.results$a)
+  b <- as.numeric(biphasic.results$b)
+  c <- as.numeric(biphasic.results$c)
+  RMSE <- as.numeric(biphasic.results$RMSEscore)
+}
+{#Calculate IC50
+  tempterm <- 0.5*(2*a*b - b - 2*a*c + c + sqrt((-2*a*b + b + 2*a*c - c)^2 + 4*b*c))
+  tempterm2 <- 0.5*(2*a*b - b - 2*a*c + c - sqrt((-2*a*b + b + 2*a*c - c)^2 + 4*b*c))
+  IC50 <- max(tempterm, tempterm2)
+}
+
+#Construct Results CSV
+tempvector <- c(ActiveName, "Biphasic Model", a, b, c, RMSEscore, IC50)
+dirtyregressionresults <- rbind(dirtyregressionresults, tempvector)
+colnames(dirtyregressionresults) <- c("ActiveName", "Model", "F#1", "Kd1", "Kd2", "RMSE", "IC50")
+
+n <- max(length(x), length(y), length(tempvector))
+length(x) <- n                      
+length(y) <- n
+length(tempvector) <- n
+tempdata <- tempvector
+
+tempdata <- cbind(tempdata, x)
+tempdata <- as.data.frame(cbind(tempdata, y))
+tempterm <- paste("~/Desktop/plots/", ActiveName, "_Data.csv", sep = "")
+write.csv(tempdata, file = tempterm)
+
+#Graph Function
+temptext <- paste(ActiveName, "Biphasic Minimalization", sep = " ")
+biphasic.results <- paste("BiphasicModel: ", "F1=", round(a, digits = 4) , ", Kd1=", round(b, digits = 4), ", Kd2=", round(c, digits = 4), " Offset=", d, ", RMSE=", round(RMSE, digits = 4), ", IC50=", round(IC50, digits = 4), sep = "")
+
+tempterm <- max(max(x), IC50)
+
+ggplot(data = testdata, aes(x = x, y = y)) +
+  geom_point()+
+  geom_function(fun = biphasic.function)+ 
+  scale_x_continuous(trans = "log10")+
+  labs(title = temptext, x = "lnCONC", y = "Relative Viability") +
+  annotate(geom = "text", x = 1 ,  y=1.5, label = str_wrap(biphasic.results, 50))+
+  ylim(0, 1.5)+
+  ggsave(plot = last_plot(), filename = paste(ActiveName, "_Biphasic_Minimization.png", sep = ""), width = 10, height = 10, device = NULL)
+}
+dirtyregressionresults <- subset(dirtyregressionresults, !IC50 > 100)
+output_results <- dirtyregressionresults
+colnames(output_results) <- c("ActiveName", "Model", "F1", "Kd1", "Kd2", "RMSE", "IC50")
+
+all_results <- read.xlsx("all_results.xlsx")
+all_results <- rbind(all_results, output_results)
+write.xlsx(all_results, file = "all_results.xlsx")
+
+all_results <- all_results[!is.na(IC50)]
+all_results <- distinct(all_results, .keep_all = FALSE)
+
+```

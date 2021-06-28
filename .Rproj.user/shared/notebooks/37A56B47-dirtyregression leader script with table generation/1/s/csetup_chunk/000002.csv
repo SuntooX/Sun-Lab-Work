@@ -1,0 +1,146 @@
+"0","knitr::opts_chunk$set(echo = TRUE)"
+"0",""
+"0","#Setup:"
+"0","library(tidyr)"
+"0","library(lattice)"
+"0","library(reshape2)"
+"2","
+Attaching package: ‘reshape2’
+
+"
+"2","The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+"
+"0","library(readxl)"
+"0","library(ggplot2)"
+"0","library(data.table)"
+"2","Registered S3 method overwritten by 'data.table':
+  method           from
+  print.data.table     
+"
+"2","data.table 1.14.0 using 8 threads (see ?getDTthreads).  Latest news: r-datatable.com
+"
+"2","
+Attaching package: ‘data.table’
+
+"
+"2","The following objects are masked from ‘package:reshape2’:
+
+    dcast, melt
+
+"
+"0","library(dplyr)"
+"2","
+Attaching package: ‘dplyr’
+
+"
+"2","The following objects are masked from ‘package:data.table’:
+
+    between, first, last
+
+"
+"2","The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+"
+"2","The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+"
+"0","library(deSolve)"
+"0","library(glue)"
+"2","
+Attaching package: ‘glue’
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+"
+"0","library(CARRoT)"
+"0","library(caret)"
+"0","library(nlme)"
+"2","
+Attaching package: ‘nlme’
+
+"
+"2","The following object is masked from ‘package:glue’:
+
+    collapse
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+"
+"0","library(ggplot2)"
+"0","library(broom) "
+"0","library(reshape2)"
+"0","library(readxl)"
+"0","library(ggplot2)"
+"0","library(data.table)"
+"0","library(dplyr)"
+"0","library(deSolve)"
+"0","library(glue)"
+"0","library(CARRoT)"
+"0","library(caret)"
+"0","library(nlme)"
+"0","library(ggplot2)"
+"0","library(broom)"
+"0","library(ModelMetrics)"
+"2","
+Attaching package: ‘ModelMetrics’
+
+"
+"2","The following objects are masked from ‘package:caret’:
+
+    confusionMatrix, precision, recall, sensitivity, specificity
+
+"
+"2","The following object is masked from ‘package:base’:
+
+    kappa
+
+"
+"0","#library(aomisc)"
+"0","library(drmdel)"
+"0","library(drc)"
+"2","Loading required package: MASS
+"
+"2","
+Attaching package: ‘MASS’
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    select
+
+"
+"2","
+'drc' has been loaded.
+
+"
+"2","Please cite R and 'drc' if used for a publication,
+"
+"2","for references type 'citation()' and 'citation('drc')'.
+
+"
+"2","
+Attaching package: ‘drc’
+
+"
+"2","The following objects are masked from ‘package:stats’:
+
+    gaussian, getInitial
+
+"
+"0","library(stringr) "
+"0","library(nlme)"
+"0","library(openxlsx)"
+"0","library(scales)"

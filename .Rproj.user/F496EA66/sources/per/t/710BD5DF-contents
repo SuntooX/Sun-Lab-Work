@@ -1,0 +1,44 @@
+---
+title: "Slope Based Analysis"
+author: "Alex"
+date: "6/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(openxlsx)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ModelMetrics)
+library(ggplot2)
+library(stringr)
+```
+
+```{r}
+inputdata <- read_xlsx("inputdata.xlsx", sheet = NULL)
+
+x <- as.vector(inputdata[,1])
+y <- as.vector(inputdata[,2])
+
+tempterm <- length(x)
+
+for(i in tempterm){
+  if (i == min(tempterm)){a <- i} else {a <- i + 1}
+  if (i == max(tempterm)){b <- i} else {b <- i + 1}
+ 
+  #select region
+  tempdata <- inputdata[a:b,]
+ 
+}
+
+
+```
+
+
+
+
+
+

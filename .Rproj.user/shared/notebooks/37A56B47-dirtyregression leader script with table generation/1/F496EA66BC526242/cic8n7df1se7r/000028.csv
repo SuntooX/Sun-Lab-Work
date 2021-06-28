@@ -1,0 +1,24 @@
+"0","      ggplot(data = testdata, aes(x = x, y = y)) +
+        geom_point()+
+        #change coefficients
+          a <- as.numeric(gompertz.results$a)+
+          b <- as.numeric(gompertz.results$b)+
+          c <- as.numeric(gompertz.results$c)+
+          d <- as.numeric(gompertz.results$d)+
+        geom_function(fun = gompertz.function)+ 
+        labs(title = temptext, x = ""LnCONC"", y = ""Relative Viability"") +
+        annotate(geom = ""text"", x = (max(x)/2), y=1.2, label = str_wrap(temptext2, 100)) +
+        #change coefficients
+          a <- as.numeric(biphasic.results$a)+
+          b <- as.numeric(biphasic.results$b)+
+          c <- as.numeric(biphasic.results$c)+
+          d <- as.numeric(biphasic.results$d)+
+        geom_function(fun = biphasic.function, aes(color = ""blue"")) +
+        annotate(geom = ""text"", x = (tempterm/2), y=1.5, label = str_wrap(biphasic.results, 100)) +
+        ylim(0, 1.5)+
+        xlim(0, tempterm)+
+        ggsave(plot = last_plot(), filename = paste(ActiveName, ""_Dirty_Gompertz_Plot.png"", sep = """"), width = 10, height = 10, device = NULL)
+"
+"2","Error in as.numeric(biphasic.results$c) + d <- as.numeric(biphasic.results$d) +  : 
+  could not find function ""+<-""
+"

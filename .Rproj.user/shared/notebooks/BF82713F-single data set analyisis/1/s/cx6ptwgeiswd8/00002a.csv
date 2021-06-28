@@ -1,0 +1,7 @@
+"0",""
+"0","#Report the Results"
+"0","all_results <- read_xlsx(""all_results.xlsx"")"
+"0","output_results <- c(ActiveName, ""Script"", a, b, c, RMSEscore, IC50)"
+"0","all_results <- rbind(all_results, output_results)"
+"0","write.csv(all_results, file = ""all_results.csv"")"
+"0","write.xlsx(all_results, file = ""all_results.xlsx"")"
