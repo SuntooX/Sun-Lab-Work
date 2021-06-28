@@ -1,0 +1,74 @@
+---
+title: "Slope Based Analysis"
+author: "Alex"
+date: "6/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(openxlsx)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ModelMetrics)
+library(ggplot2)
+library(stringr)
+```
+
+```{r}
+inputdata <- as.data.frame(read_xlsx("inputdata.xlsx", sheet = "HG6-64-1")) # "AZD") "Dasatinib") "BMS")))
+ActiveName <- colnames(inputdata[2])
+activefunction <- function(x) {1-a*x/(b+x) -(1-a)*x/(c+x)}
+deriv.fuction <- function(x) {-c/(c + x)^2 + a*(-b/(b + x)^2 + c/(c + x)^2)}
+  
+x <- as.vector(inputdata[,1])
+logx <- log10(as.vector(inputdata[,1]))
+y <- as.vector(inputdata[,2])
+
+testdata <- as.data.frame(cbind(logx,y))
+
+slope_report <- t(as.data.frame(c(0,0,0,0,0)))
+colnames(slope_report) <- c("i", "x","logx", "y", "slope")
+
+tempterm <- as.numeric(seq(from = 1, to = length(x), by = 1))
+for(i in tempterm){
+  if (i == min(tempterm)){a <- i} else {a <- i - 1}
+  if (i == max(tempterm)){b <- i} else {b <- i + 1}
+
+  #a / left side
+  tempdata <- testdata[a:i,]
+  low_slope <- (tempdata[2,2]-tempdata[1,2])/(tempdata[2,1]-tempdata[1,1])
+  tempdata <- testdata[i:b,]
+  high_slope <- (tempdata[2,2]-tempdata[1,2])/(tempdata[2,1]-tempdata[1,1])
+  if (a == i){low_slope <- high_slope}else{}
+  if (b == i){high_slope <- low_slope}else{}
+  
+  slope <- (high_slope+low_slope)/2
+  
+  tempvector <- c(i, x[i], logx[i], y[i], slope)               
+  slope_report <- rbind(slope_report, tempvector)
+  print(paste(a,i,b, sep = ",")) 
+}
+slope_report <- as.data.frame(slope_report)
+
+ggplot(data = slope_report, aes(x = x, y = slope))+
+  geom_line()+
+  scale_x_continuous(trans = "log10") + 
+  labs(title = paste(ActiveName,"Slopes", sep = " "), x = "lnCONC", y = "Slope")+
+  ggsave(plot = last_plot(), filename = paste(ActiveName, "_Slope_Plot.png", sep = ""), width = 10, height = 10, device = NULL)
+
+
+
+```
+
+```{r}
+
+deriv.fuction(logx)
+
+```
+
+
+
+
